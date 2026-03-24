@@ -1,577 +1,84 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Simple Linear Regression</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<style>
-body {
-    font-family: Arial, sans-serif;
-    margin: 20px;
-}
-.container {
-    display: flex;
-    flex-wrap: wrap;
-}
-.column {
-    padding: 10px;
-}
-.left { 
-    width: 40%; 
-    min-width: 300px;
-}
-.middle { 
-    width: 15%; 
-    min-width: 150px;
-}
-.right { 
-    width: 40%; 
-    min-width: 250px;
-}
-
-.plot-container {
-    width: 100%;
-    height: 350px;
-    position: relative;
-}
-
-canvas {
-    border: 1px solid #ccc;
-    width: 100% !important;
-    height: 100% !important;
-    display: block;
-}
-
-input[type=range] {
-    width: 100%;
-}
-
-button {
-    width: 100%;
-    padding: 6px;
-    margin-top: 5px;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12px;
-}
-td, th {
-    border: 1px solid #ccc;
-    padding: 4px;
-}
-
-.controls {
-    margin-top: 10px;
-}
-
-pre {
-    background: #f5f5f5;
-    padding: 8px;
-    border-radius: 4px;
-    overflow: auto;
-    max-height: 400px;
-    font-size: 11px;
-}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My GitHub Pages Site</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f4f4f4;
+    }
+    header {
+      background: #24292e;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+    nav {
+      display: flex;
+      justify-content: center;
+      background: #0366d6;
+    }
+    nav a {
+      color: white;
+      padding: 14px 20px;
+      text-decoration: none;
+    }
+    nav a:hover {
+      background: #024ea2;
+    }
+    .container {
+      padding: 20px;
+    }
+    section {
+      margin-bottom: 40px;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+  </style>
 </head>
 <body>
 
-<h2>Simple Linear Regression</h2>
+<header>
+  <h1>My GitHub.io Website</h1>
+  <p>Welcome to my site hosted on GitHub Pages</p>
+</header>
+
+<nav>
+  <a href="#home">Home</a>
+  <a href="#about">About</a>
+  <a href="#projects">Projects</a>
+  <a href="#contact">Contact</a>
+</nav>
 
 <div class="container">
 
-<!-- LEFT COLUMN -->
-<div class="column left">
-    <div class="plot-container">
-        <canvas id="chart"></canvas>
-    </div>
-    
-    <div class="controls">
-        <label>Intercept (β₀): <span id="b0val">0.00</span></label>
-        <input type="range" id="beta0" min="-10" max="10" step="0.01" value="0">
+  <section id="home">
+    <h2>Home</h2>
+    <p>This is the homepage of your GitHub Pages website.</p>
+  </section>
 
-        <label>Slope (β₁): <span id="b1val">1.00</span></label>
-        <input type="range" id="beta1" min="-5" max="5" step="0.01" value="1">
+  <section id="about">
+    <h2>About</h2>
+    <p>Write something about yourself here.</p>
+  </section>
 
-        <label>Error Std (σ): <span id="sdval">1.00</span></label>
-        <input type="range" id="error_sd" min="0" max="5" step="0.1" value="1">
+  <section id="projects">
+    <h2>Projects</h2>
+    <p>Showcase your projects or work.</p>
+  </section>
 
-        <label>Sample Size (n): <span id="nval">30</span></label>
-        <input type="range" id="n_points" min="5" max="500" step="5" value="30">
-
-        <div style="display: flex; gap: 5px; margin-top: 10px;">
-            <button onclick="clearData()" style="flex: 1;">Clear</button>
-            <button onclick="fitModel()" style="flex: 1;">Fit OLS</button>
-            <button onclick="generateData()" style="flex: 1;">Generate</button>
-        </div>
-        <p style="font-size:0.9em; color:gray; margin-top: 10px;">✓ Click chart to add point → auto-updates</p>
-    </div>
-</div>
-
-<!-- MIDDLE COLUMN -->
-<div class="column middle">
-    <h4>Data Points (first 10)</h4>
-    <div id="dataTable" style="max-height: 300px; overflow-y: auto;"></div>
-
-    <h4>Data Summary</h4>
-    <pre id="summary" style="background: #f5f5f5; padding: 8px;">No data</pre>
-</div>
-
-<!-- RIGHT COLUMN -->
-<div class="column right">
-    <h3>Model</h3>
-    <pre style="font-size: 12px;">Y = β₀ + β₁X + ε, where ε ~ N(0, σ)</pre>
-
-    <h4>Fitted Model Summary</h4>
-    <pre id="modelSummary" style="font-size: 11px;">Click 'Fit' or add points</pre>
-</div>
+  <section id="contact">
+    <h2>Contact</h2>
+    <p>Email: your@email.com</p>
+  </section>
 
 </div>
 
-<script>
-// ========== global state ==========
-let dataPoints = [];
-let chart = null;
-
-// UI elements
-const beta0 = document.getElementById('beta0');
-const beta1 = document.getElementById('beta1');
-const error_sd = document.getElementById('error_sd');
-const n_points = document.getElementById('n_points');
-
-// ========== helper function for number formatting ==========
-function formatNumber(x, decimals = 2) {
-    const formatted = x.toFixed(decimals);
-    return x >= 0 ? ' ' + formatted : formatted;
-}
-
-// ========== update function - consolidates all UI updates ==========
-function update(options = {}) {
-    if (!chart) return;
-    
-    const {
-        updatePlot = true,
-        updateSliders = true,
-        updateTable = true,
-        updateSummary = true,
-        updateModel = true,
-        fitOls = true
-    } = options;
-    
-    // Update slider display values
-    if (updateSliders) {
-        document.getElementById("b0val").innerText = parseFloat(beta0.value).toFixed(2);
-        document.getElementById("b1val").innerText = parseFloat(beta1.value).toFixed(2);
-        document.getElementById("sdval").innerText = parseFloat(error_sd.value).toFixed(2);
-        document.getElementById("nval").innerText = n_points.value;
-    }
-    
-    // Update plot data and lines
-    if (updatePlot) {
-        // Update data points
-        chart.data.datasets[0].data = dataPoints;
-        
-        // Update current line (blue)
-        let b0 = parseFloat(beta0.value);
-        let b1 = parseFloat(beta1.value);
-        let currentLine = [];
-        for (let x = -10; x <= 10; x += 0.2) {
-            currentLine.push({x: x, y: b0 + b1 * x});
-        }
-        chart.data.datasets[1].data = currentLine;
-        
-        chart.update();
-    }
-    
-    // Update data table
-    if (updateTable) {
-        updateTableOnly();
-    }
-    
-    // Update data summary
-    if (updateSummary) {
-        updateSummaryOnly();
-    }
-    
-    // Update OLS model
-    if (updateModel) {
-        if (fitOls && dataPoints.length >= 3) {
-            fitModel(false); // false = don't trigger another update
-        } else if (dataPoints.length < 3) {
-            // Clear the OLS line when there are fewer than 3 points
-            chart.data.datasets[2].data = [];
-            chart.update();
-            document.getElementById("modelSummary").innerText = 
-                dataPoints.length + " point(s) — need ≥3 for OLS";
-        }
-    }
-}
-
-// ========== update only table ==========
-function updateTableOnly() {
-    if (dataPoints.length === 0) {
-        document.getElementById("dataTable").innerHTML = "<i>No data points</i>";
-    } else {
-        let html = "<table><tr><th>x</th><th>y</th></tr>";
-        dataPoints.slice(0, 10).forEach(p => {
-            html += "<tr><td>" + p.x.toFixed(2) + "</td><td>" + p.y.toFixed(2) + "</td></tr>";
-        });
-        if (dataPoints.length > 10) {
-            html += "<tr><td colspan='2'>... and " + (dataPoints.length - 10) + " more</td></tr>";
-        }
-        html += "</table>";
-        document.getElementById("dataTable").innerHTML = html;
-    }
-}
-
-// ========== update only summary ==========
-function updateSummaryOnly() {
-    if (dataPoints.length < 2) {
-        document.getElementById("summary").innerText = "n = " + dataPoints.length + "\nNeed ≥2 points for correlation";
-    } else {
-        let xs = dataPoints.map(p => p.x);
-        let ys = dataPoints.map(p => p.y);
-        
-        let meanx = xs.reduce((a, b) => a + b) / xs.length;
-        let meany = ys.reduce((a, b) => a + b) / ys.length;
-        
-        let num = 0, denx = 0, deny = 0;
-        for(let i = 0; i < xs.length; i++){
-            num += (xs[i] - meanx) * (ys[i] - meany);
-            denx += (xs[i] - meanx) ** 2;
-            deny += (ys[i] - meany) ** 2;
-        }
-        
-        let cor = denx === 0 || deny === 0 ? 0 : num / Math.sqrt(denx * deny);
-        
-        let x_min = Math.min(...xs).toFixed(2);
-        let x_max = Math.max(...xs).toFixed(2);
-        let y_min = Math.min(...ys).toFixed(2);
-        let y_max = Math.max(...ys).toFixed(2);
-        
-        document.getElementById("summary").innerText =
-            "n = " + dataPoints.length +
-            "\ncor(x,y) = " + cor.toFixed(4) +
-            "\nx range: " + x_min + " to " + x_max +
-            "\ny range: " + y_min + " to " + y_max;
-    }
-}
-
-// ========== OLS fit ==========
-function fitModel(triggerUpdate = true) {
-    if (!chart) return;
-    
-    if (dataPoints.length < 3) {
-        chart.data.datasets[2].data = [];
-        chart.update();
-        document.getElementById("modelSummary").innerText = 
-            dataPoints.length + " point(s) — need ≥3 for OLS";
-        return;
-    }
-    
-    const n = dataPoints.length;
-    const xs = dataPoints.map(p => p.x);
-    const ys = dataPoints.map(p => p.y);
-    
-    const meanx = xs.reduce((a,b) => a + b) / n;
-    const meany = ys.reduce((a,b) => a + b) / n;
-    
-    let Sxx = 0, Sxy = 0, Syy = 0;
-    for(let i = 0; i < n; i++){
-        Sxx += (xs[i] - meanx) ** 2;
-        Sxy += (xs[i] - meanx) * (ys[i] - meany);
-        Syy += (ys[i] - meany) ** 2;
-    }
-    
-    if (Sxx === 0) {
-        chart.data.datasets[2].data = [];
-        chart.update();
-        document.getElementById("modelSummary").innerText = "All X identical — cannot fit slope.";
-        return;
-    }
-    
-    const b1 = Sxy / Sxx;
-    const b0 = meany - b1 * meanx;
-    
-    // Update the blue line (current line) to match OLS fit
-    beta0.value = b0.toFixed(2);
-    beta1.value = b1.toFixed(2);
-    
-    // Update slider display values
-    document.getElementById("b0val").innerText = b0.toFixed(2);
-    document.getElementById("b1val").innerText = b1.toFixed(2);
-    
-    // Residuals
-    const residuals = xs.map((x, i) => ys[i] - (b0 + b1 * x));
-    const RSS = residuals.reduce((a, b) => a + b * b, 0);
-    const TSS = Syy;
-    
-    const df = n - 2;
-    const sigma2 = RSS / df;
-    const sigma = Math.sqrt(sigma2);
-    
-    // Standard errors
-    const se_b1 = Math.sqrt(sigma2 / Sxx);
-    const se_b0 = Math.sqrt(sigma2 * (1/n + meanx * meanx / Sxx));
-    
-    const t_b1 = b1 / se_b1;
-    const t_b0 = b0 / se_b0;
-    
-    // P-values
-    function pValue(t) {
-        return 2 * (1 - normalCDF(Math.abs(t)));
-    }
-    
-    function normalCDF(x) {
-        return (1 + erf(x / Math.sqrt(2))) / 2;
-    }
-    
-    function erf(x) {
-        const sign = x >= 0 ? 1 : -1;
-        x = Math.abs(x);
-        const a1 = 0.254829592, a2 = -0.284496736,
-              a3 = 1.421413741, a4 = -1.453152027,
-              a5 = 1.061405429, p = 0.3275911;
-        const t = 1 / (1 + p * x);
-        const y = 1 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
-        return sign * y;
-    }
-    
-    const p_b0 = pValue(t_b0);
-    const p_b1 = pValue(t_b1);
-    
-    function stars(p) {
-        if(p < 0.001) return "***";
-        if(p < 0.01) return "**";
-        if(p < 0.05) return "*";
-        if(p < 0.1) return ".";
-        return " ";
-    }
-    
-    const R2 = TSS === 0 ? 0 : 1 - RSS / TSS;
-    const adjR2 = 1 - (1 - R2) * (n - 1) / df;
-    const F = (R2 / 1) / ((1 - R2) / df);
-    
-    // Residual quantiles
-    const sorted = [...residuals].sort((a, b) => a - b);
-    function quantile(arr, q) {
-        const pos = (arr.length - 1) * q;
-        const base = Math.floor(pos);
-        const rest = pos - base;
-        if (arr[base + 1] !== undefined)
-            return arr[base] + rest * (arr[base + 1] - arr[base]);
-        return arr[base];
-    }
-    
-    const resMin = sorted[0];
-    const res1Q = quantile(sorted, 0.25);
-    const resMed = quantile(sorted, 0.5);
-    const res3Q = quantile(sorted, 0.75);
-    const resMax = sorted[sorted.length - 1];
-    
-    // Draw OLS line (green dotted)
-    let olsLine = [];
-    for (let x = -10; x <= 10; x += 0.2) {
-        olsLine.push({x: x, y: b0 + b1 * x});
-    }
-    chart.data.datasets[2].data = olsLine;
-    
-    // Also update the blue current line to match
-    let currentLine = [];
-    for (let x = -10; x <= 10; x += 0.2) {
-        currentLine.push({x: x, y: b0 + b1 * x});
-    }
-    chart.data.datasets[1].data = currentLine;
-    
-    // Format output with aligned numbers
-    document.getElementById("modelSummary").innerText =
-`Call:  lm(formula = y ~ x)
-
-Residuals:
-    Min      1Q  Median      3Q     Max
-${formatNumber(resMin, 4)} ${formatNumber(res1Q, 4)} ${formatNumber(resMed, 4)} ${formatNumber(res3Q, 4)} ${formatNumber(resMax, 4)}
-
-Coefficients:
-            Estimate Std. Error t value Pr(>|t|)
-(Intercept) ${formatNumber(b0, 4)}   ${formatNumber(se_b0, 4)}   ${formatNumber(t_b0, 2)}   ${p_b0.toExponential(2)} ${stars(p_b0)}
-x           ${formatNumber(b1, 4)}   ${formatNumber(se_b1, 4)}   ${formatNumber(t_b1, 2)}   ${p_b1.toExponential(2)} ${stars(p_b1)}
----
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-
-Residual standard error: ${sigma.toFixed(4)} on ${df} DF
-Multiple R-squared: ${R2.toFixed(4)}    Adjusted R-squared: ${adjR2.toFixed(4)}
-F-statistic: ${F.toFixed(2)} on 1 and ${df} DF`;
-    
-    if (triggerUpdate) {
-        chart.update();
-    }
-}
-
-// ========== event handlers ==========
-function initializeChart() {
-    const canvas = document.getElementById('chart');
-    const ctx = canvas.getContext('2d');
-    
-    chart = new Chart(ctx, {
-        type: 'scatter',
-        data: {
-            datasets: [
-                { 
-                    label: 'Data', 
-                    data: [], 
-                    backgroundColor: 'red',
-                    pointRadius: 4,
-                    hoverRadius: 6,
-                    showLine: false
-                },
-                { 
-                    label: 'Current Line', 
-                    data: [], 
-                    type: 'line', 
-                    borderColor: 'blue', 
-                    borderWidth: 2,
-                    fill: false, 
-                    pointRadius: 0,
-                    showLine: true
-                },
-                { 
-                    label: 'OLS Line', 
-                    data: [], 
-                    type: 'line', 
-                    borderColor: 'green', 
-                    borderDash: [5,5], 
-                    borderWidth: 2,
-                    fill: false, 
-                    pointRadius: 0,
-                    showLine: true
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: { enabled: true }
-            },
-            scales: {
-                x: { 
-                    min: -10, max: 10,
-                    grid: { color: 'rgba(0,0,0,0.1)' },
-                    title: { display: true, text: 'X' }
-                },
-                y: { 
-                    min: -10, max: 10,
-                    grid: { color: 'rgba(0,0,0,0.1)' },
-                    title: { display: true, text: 'Y' }
-                }
-            }
-        }
-    });
-}
-
-function setupEventListeners() {
-    // Range input listeners
-    document.querySelectorAll("input[type=range]").forEach(el => {
-        el.addEventListener("input", () => {
-            update({ 
-                updatePlot: true, 
-                updateSliders: true,
-                updateModel: false  // Don't auto-fit OLS while sliding
-            });
-        });
-    });
-    
-    // Click listener for adding points - ONLY updates data and green line, NOT blue line
-    const canvas = document.getElementById('chart');
-    canvas.addEventListener('click', function(evt) {
-        if (!chart) return;
-        
-        const rect = canvas.getBoundingClientRect();
-        const x = evt.clientX - rect.left;
-        const y = evt.clientY - rect.top;
-        
-        const xScale = chart.scales.x;
-        const yScale = chart.scales.y;
-        const chartArea = chart.chartArea;
-        
-        if (x >= chartArea.left && x <= chartArea.right && 
-            y >= chartArea.top && y <= chartArea.bottom) {
-            
-            const xValue = xScale.getValueForPixel(x);
-            const yValue = yScale.getValueForPixel(y);
-            
-            if (xValue >= -10 && xValue <= 10 && yValue >= -10 && yValue <= 10) {
-                // Add the new point
-                dataPoints.push({x: xValue, y: yValue});
-                
-                // Update ONLY the data points on the chart (not the blue line)
-                chart.data.datasets[0].data = dataPoints;
-                
-                // Update table and summary
-                updateTableOnly();
-                updateSummaryOnly();
-                
-                // Update OLS model (green dotted line) if enough points
-                if (dataPoints.length >= 3) {
-                    fitModel(false); // false = don't trigger chart update yet
-                } else {
-                    chart.data.datasets[2].data = [];
-                    document.getElementById("modelSummary").innerText = 
-                        dataPoints.length + " point(s) — need ≥3 for OLS";
-                }
-                
-                // Update the chart (this will NOT change the blue line)
-                chart.update();
-            }
-        }
-    });
-}
-
-// ========== main actions ==========
-function clearData() {
-    dataPoints = [];
-    if (chart) {
-        chart.data.datasets[2].data = [];
-    }
-    update({ fitOls: false });
-    document.getElementById("modelSummary").innerText = "No data points";
-}
-
-function generateData() {
-    dataPoints = [];
-    let b0 = parseFloat(beta0.value);
-    let b1 = parseFloat(beta1.value);
-    let sd = parseFloat(error_sd.value);
-    let n = parseInt(n_points.value);
-    
-    // Box-Muller for normal distribution
-    function randn() {
-        let u = 0, v = 0;
-        while(u === 0) u = Math.random();
-        while(v === 0) v = Math.random();
-        return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
-    }
-    
-    for(let i = 0; i < n; i++){
-        let x = -8 + 16 * Math.random();
-        let y = b0 + b1 * x + randn() * sd;
-        dataPoints.push({x: x, y: y});
-    }
-    
-    update({ fitOls: true });
-}
-
-// ========== initialize ==========
-window.addEventListener('load', function() {
-    initializeChart();
-    setupEventListeners();
-    update();  // Initial update
-});
-
-</script>
 </body>
 </html>
