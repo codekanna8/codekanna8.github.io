@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>MLE of Normal Mean</title>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<style>
+body { font-family: Arial; margin: 20px; background: #f9f9f9; }
+.container { display: flex; flex-wrap: wrap; }
+.column { padding: 10px; }
+#left { width: 35%; min-width: 400px; }
+#middle { width: 25%; min-width: 250px; }
+#right { width: 35%; min-width: 400px; }
+.control-panel { 
+  background: white; 
+  padding: 15px; 
+  border-radius: 5px; 
+  margin-top: 10px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+button { 
+  margin: 5px 0; 
+  padding: 8px 20px; 
+  background: #2c3e50; 
+  color: white; 
+  border: none; 
+  border-radius: 4px; 
+  cursor: pointer;
+  font-size: 14px;
+}
+button:hover { background: #1e2b37; }
+input[type=range] { width: 80%; margin: 10px 0; }
+.slider-label { font-weight: bold; color: #2c3e50; }
+.data-panel {
+  background: white;
+  border-radius: 5px;
+  padding: 15px;
+  height: 500px;
+  overflow-y: auto;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+.data-panel h4 {
+  margin-top: 0;
+  color: #2c3e50;
+  border-bottom: 2px solid #eee;
+  padding-bottom: 10px;
+}
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+.data-table th {
+  background: #2c3e50;
+  color: white;
+  padding: 8px;
+  text-align: center;
+  position: sticky;
+  top: 0;
+}
+.data-table td {
+  padding: 8px;
+  text-align: center;
+  border-bottom: 1px solid #eee;
+}
+.data-table tr:hover {
+  background: #f5f5f5;
+}
+.likelihood-value {
+  font-family: monospace;
+  color: #27ae60;
+}
+.loglik-value {
+  font-family: monospace;
+  color: #2980b9;
+}
+.radio-group {
+  margin: 15px 0;
+  padding: 10px;
+  background: #f0f0f0;
+  border-radius: 5px;
+  text-align: center;
+}
+.radio-group label {
+  margin-right: 20px;
+  cursor: pointer;
+}
+.radio-group input[type="radio"] {
+  margin-right: 5px;
+}
+.joint-panel {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 5px;
+  margin-top: 15px;
+  text-align: center;
+  font-size: 1.1em;
+  border-left: 4px solid #2c3e50;
+}
+.joint-label {
+  font-weight: bold;
+  color: #2c3e50;
+  margin-bottom: 5px;
+}
+.joint-value {
+  font-family: monospace;
+  font-size: 1.2em;
+  padding: 8px;
+  background: white;
+  border-radius: 3px;
+  border: 1px solid #ddd;
+}
+</style>
+</head>
+<body>
+
+<h2>MLE of Normal Distribution's Mean (μ)</h2>
+
+<div class="container">
+
+<div id="left" class="column">
+  <div id="densityPlot"></div>
+  
+  <div class="control-panel">
+    <div style="text-align: center;">
+      <span class="slider-label">Mean (μ):</span><br>
+      <input type="range" id="mu" min="-10" max="10" step="0.1" value="0">
+      <span id="mu_val">0.0</span>
+      <br><br>
+      
+      <span class="slider-label">Standard Deviation (σ):</span><br>
+      <input type="range" id="sigma" min="0.1" max="10" step="0.1" value="1">
+      <span id="sigma_val">1.0</span>
+      <br><br>
+      
+      <button onclick="resetData()">Clear Data</button>
+    </div>
+  </div>
+</div>
+
+<div id="middle" class="column">
+  <div class="data-panel">
+    <h4 id="tableTitle">Likelihoods</h4>
+    
+    <div style="margin-bottom: 15px; text-align: center;">
+      <span style="background: #e74c3c; color: white; padding: 3px 10px; border-radius: 3px;">n = <span id="pointCount">0</span></span>
+    </div>
+    
+      <div class="joint-label" id="jointLabel">Joint Likelihood:</div>
+      <div class="joint-value" id="jointValue">—</div>
+    
+    <table class="data-table" id="dataTable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>x</th>
+          <th id="valueHeader">L(x|μ,σ)</th>
+        </tr>
+      </thead>
+      <tbody id="dataTableBody">
+        <tr><td colspan="3" style="text-align: center; color: #999; padding: 20px;">No data points yet<br>Click on the density plot to add</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="right" class="column">
+  <div id="likelihoodPlot"></div>
+  
+  <div class="radio-group">
+    <label>
+      <input type="radio" name="lik_type" value="likelihood" checked onclick="toggleLikelihoodType()"> Likelihood
+    </label>
+    <label>
+      <input type="radio" name="lik_type" value="loglik" onclick="toggleLikelihoodType()"> Log-Likelihood
+    </label>
+  </div>
+</div>
+
+</div>
+
+<script>
+let dataPoints = [];
+let likelihoodType = 'likelihood'; // 'likelihood' or 'loglik'
+
+const densityDiv = document.getElementById('densityPlot');
+const likelihoodDiv = document.getElementById('likelihoodPlot');
+
+const muSlider = document.getElementById("mu");
+const sigmaSlider = document.getElementById("sigma");
+
+const muDisplay = document.getElementById("mu_val");
+const sigmaDisplay = document.getElementById("sigma_val");
+
+muDisplay.innerText = parseFloat(muSlider.value).toFixed(1);
+sigmaDisplay.innerText = parseFloat(sigmaSlider.value).toFixed(1);
+
+muSlider.oninput = () => {
+  muDisplay.innerText = parseFloat(muSlider.value).toFixed(1);
+  updatePlots();
+};
+
+sigmaSlider.oninput = () => {
+  sigmaDisplay.innerText = parseFloat(sigmaSlider.value).toFixed(1);
+  updatePlots();
+};
+
+function toggleLikelihoodType() {
+  const radios = document.getElementsByName('lik_type');
+  for (let radio of radios) {
+    if (radio.checked) {
+      likelihoodType = radio.value;
+      break;
+    }
+  }
+  
+  // Update table title, header, and joint label
+  const tableTitle = document.getElementById('tableTitle');
+  const valueHeader = document.getElementById('valueHeader');
+  const jointLabel = document.getElementById('jointLabel');
+  
+  if (likelihoodType === 'likelihood') {
+    tableTitle.innerText = 'Likelihoods';
+    valueHeader.innerText = 'L(x|μ,σ)';
+    jointLabel.innerText = 'Joint Likelihood:';
+  } else {
+    tableTitle.innerText = 'Log-Likelihoods';
+    valueHeader.innerText = 'log L(x|μ,σ)';
+    jointLabel.innerText = 'log(Joint Likelihood):';
+  }
+  
+  // Update both the data table and the right plot
+  updateDataDisplay();
+  updateLikelihoodPlot();
+}
+
+function computeIndividualLikelihood(x, mu, sigma) {
+  return (1 / (sigma * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((x - mu) / sigma, 2));
+}
+
+function computeIndividualLogLikelihood(x, mu, sigma) {
+  return -0.5 * Math.log(2 * Math.PI) - Math.log(sigma) - 0.5 * Math.pow((x - mu) / sigma, 2);
+}
+
+function computeJointLikelihood(mu, sigma) {
+  if (dataPoints.length === 0) return null;
+  let lik = 1;
+  for (let x of dataPoints) {
+    lik *= computeIndividualLikelihood(x, mu, sigma);
+  }
+  return lik;
+}
+
+function computeJointLogLikelihood(mu, sigma) {
+  if (dataPoints.length === 0) return null;
+  let loglik = 0;
+  for (let x of dataPoints) {
+    loglik += computeIndividualLogLikelihood(x, mu, sigma);
+  }
+  return loglik;
+}
+
+function updateDataDisplay() {
+  const tbody = document.getElementById('dataTableBody');
+  const pointCount = document.getElementById('pointCount');
+  const jointValueSpan = document.getElementById('jointValue');
+  
+  const mu = parseFloat(muSlider.value);
+  const sigma = parseFloat(sigmaSlider.value);
+  
+  pointCount.innerText = dataPoints.length;
+  
+  if (dataPoints.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #999; padding: 20px;">No data points yet<br>Click on the density plot to add</td></tr>';
+    jointValueSpan.innerText = '—';
+    return;
+  }
+  
+  let tableHtml = '';
+  dataPoints.forEach((x, index) => {
+    let value;
+    let valueClass;
+    let formattedValue;
+    
+    if (likelihoodType === 'likelihood') {
+      value = computeIndividualLikelihood(x, mu, sigma);
+      valueClass = 'likelihood-value';
+      formattedValue = value.toExponential(4);
+    } else {
+      value = computeIndividualLogLikelihood(x, mu, sigma);
+      valueClass = 'loglik-value';
+      formattedValue = value.toFixed(4);
+    }
+    
+    tableHtml += `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${x.toFixed(2)}</td>
+        <td class="${valueClass}">${formattedValue}</td>
+      </tr>
+    `;
+  });
+  tbody.innerHTML = tableHtml;
+  
+  // Update joint value
+  let jointValue;
+  if (likelihoodType === 'likelihood') {
+    jointValue = computeJointLikelihood(mu, sigma);
+    jointValueSpan.innerText = jointValue ? jointValue.toExponential(4) : '—';
+  } else {
+    jointValue = computeJointLogLikelihood(mu, sigma);
+    jointValueSpan.innerText = jointValue ? jointValue.toFixed(4) : '—';
+  }
+}
+
+function addPoint(x) {
+  dataPoints.push(parseFloat(x.toFixed(2)));
+  updateDataDisplay();
+  updatePlots();
+}
+
+function resetData() {
+  dataPoints = [];
+  updateDataDisplay();
+  updatePlots();
+}
+
+function updateLikelihoodPlot() {
+  const mu = parseFloat(muSlider.value);
+  const sigma = parseFloat(sigmaSlider.value);
+  
+  if (dataPoints.length === 0) {
+    const emptyLayout = {
+      title: {
+        text: 'Likelihood Plot',
+        font: { size: 16 }
+      },
+      xaxis: { 
+        title: 'Mean (μ)',
+        titlefont: { size: 14 },
+        range: [-10, 10]
+      },
+      yaxis: { 
+        title: '',
+        titlefont: { size: 14 },
+        showticklabels: true,
+        tickfont: { size: 12 }
+      },
+      margin: { t: 50, l: 60, r: 30, b: 50 },
+      annotations: [{
+        x: 0.5,
+        y: 0.5,
+        xref: 'paper',
+        yref: 'paper',
+        text: 'Add data points to see likelihood function',
+        showarrow: false,
+        font: { size: 14 }
+      }]
+    };
+    Plotly.react(likelihoodDiv, [], emptyLayout);
+    return;
+  }
+  
+  const mu_vals = Array.from({ length: 400 }, (_, i) => -10 + i * (20 / 399));
+  
+  let y_vals, ylab_text, plot_title;
+  
+  if (likelihoodType === 'likelihood') {
+    y_vals = mu_vals.map(mu_val => {
+      let lik = 1;
+      for (let x of dataPoints) {
+        lik *= (1 / (sigma * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((x - mu_val) / sigma, 2));
+      }
+      return lik;
+    });
+    ylab_text = "Joint Likelihood";
+    plot_title = `Joint Likelihood vs μ (σ = ${sigma.toFixed(1)})`;
+  } else {
+    y_vals = mu_vals.map(mu_val => {
+      let loglik = 0;
+      for (let x of dataPoints) {
+        loglik += -0.5 * Math.log(2 * Math.PI) - Math.log(sigma) - 0.5 * Math.pow((x - mu_val) / sigma, 2);
+      }
+      return loglik;
+    });
+    ylab_text = "log(Joint Likelihood)";
+    plot_title = `log(Joint Likelihood) vs μ (σ = ${sigma.toFixed(1)})`;
+  }
+  
+  // Find MLE (maximum)
+  const maxIdx = y_vals.indexOf(Math.max(...y_vals));
+  const mu_mle = mu_vals[maxIdx];
+  const y_max = Math.max(...y_vals);
+  const y_min = Math.min(...y_vals);
+  
+  // Calculate y-axis range with proper padding that includes the maximum
+  let y_range;
+  if (likelihoodType === 'likelihood') {
+    // For likelihood (positive values), add 10% padding above
+    y_range = [0, y_max * 1.15];
+  } else {
+    // For log-likelihood (can be negative), add padding both sides
+    const padding = Math.max(1, Math.abs(y_max - y_min) * 0.1);
+    y_range = [y_min - padding, y_max + padding];
+  }
+  
+  const likelihoodTraces = [
+    {
+      x: mu_vals,
+      y: y_vals,
+      type: 'scatter',
+      mode: 'lines',
+      line: { color: 'black', width: 2 },
+      name: likelihoodType === 'likelihood' ? 'Likelihood' : 'Log-Likelihood',
+      showlegend: false,
+      hoverinfo: 'x+y'
+    },
+    // Current mu line
+    {
+      x: [mu, mu],
+      y: [y_range[0], y_range[1]],
+      type: 'scatter',
+      mode: 'lines',
+      line: { color: 'blue', width: 2, dash: 'dash' },
+      showlegend: false,
+      hoverinfo: 'skip'
+    },
+    // MLE line
+    {
+      x: [mu_mle, mu_mle],
+      y: [y_range[0], y_range[1]],
+      type: 'scatter',
+      mode: 'lines',
+      line: { color: 'darkgreen', width: 2, dash: 'dash' },
+      showlegend: false,
+      hoverinfo: 'skip'
+    },
+    // MLE point
+    {
+      x: [mu_mle],
+      y: [y_max],
+      type: 'scatter',
+      mode: 'markers',
+      marker: { color: 'darkgreen', size: 12, symbol: 'diamond' },
+      showlegend: false,
+      hoverinfo: 'skip'
+    }
+  ];
+  
+  // Custom tick formatting function
+  const tickformat = likelihoodType === 'likelihood' ? '.2e' : '.2f';
+  
+  const likelihoodLayout = {
+    title: {
+      text: plot_title,
+      font: { size: 14 }
+    },
+    xaxis: { 
+      title: 'Mean (μ)',
+      titlefont: { size: 14 },
+      range: [-10, 10],
+      tickfont: { size: 12 },
+      gridcolor: '#e0e0e0'
+    },
+    yaxis: { 
+      title: ylab_text,
+      titlefont: { size: 14 },
+      tickfont: { size: 12 },
+      tickformat: tickformat,
+      gridcolor: '#e0e0e0',
+      range: y_range,
+      separatethousands: true,
+      exponentformat: 'e',
+      showexponent: 'all',
+      zeroline: true,
+      zerolinecolor: '#cccccc',
+      zerolinewidth: 1
+    },
+    margin: { t: 50, l: 70, r: 40, b: 50 },
+    showlegend: false,
+    hovermode: 'x',
+    annotations: [
+      {
+        x: mu,
+        y: y_range[0] + (y_range[1] - y_range[0]) * 0.05,
+        xref: 'x',
+        yref: 'y',
+        text: `μ = ${mu.toFixed(2)}`,
+        showarrow: true,
+        arrowhead: 2,
+        arrowcolor: 'blue',
+        arrowsize: 1,
+        ax: 0,
+        ay: 30,
+        font: { color: 'blue', size: 12 }
+      },
+      {
+        x: mu_mle,
+        y: y_range[0] + (y_range[1] - y_range[0]) * 0.07,
+        xref: 'x',
+        yref: 'y',
+        text: `MLE = ${mu_mle.toFixed(2)}`,
+        showarrow: true,
+        arrowhead: 2,
+        arrowcolor: 'darkgreen',
+        arrowsize: 1,
+        ax: 0,
+        ay: 50,
+        font: { color: 'darkgreen', size: 12 }
+      }
+    ]
+  };
+  
+  Plotly.react(likelihoodDiv, likelihoodTraces, likelihoodLayout);
+}
+
+function updatePlots() {
+  const mu = parseFloat(muSlider.value);
+  const sigma = parseFloat(sigmaSlider.value);
+  
+  // Update data display
+  updateDataDisplay();
+  
+  // --- DENSITY PLOT ---
+  const x_dens = Array.from({ length: 400 }, (_, i) => -10 + i * (20 / 399));
+  const y_dens = x_dens.map(x => (1 / (sigma * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((x - mu) / sigma, 2)));
+  
+  const densityTraces = [
+    {
+      x: x_dens,
+      y: y_dens,
+      type: 'scatter',
+      mode: 'lines',
+      line: { color: 'black', width: 2 },
+      name: 'Normal Density',
+      showlegend: false
+    }
+  ];
+  
+  // Add vertical line at mu
+  densityTraces.push({
+    x: [mu, mu],
+    y: [0, Math.max(...y_dens) * 1.1],
+    type: 'scatter',
+    mode: 'lines',
+    line: { color: 'blue', width: 2, dash: 'dash' },
+    name: 'Current μ',
+    showlegend: false
+  });
+  
+  // Add data points if any
+  if (dataPoints.length > 0) {
+    // Data points at y=0
+    densityTraces.push({
+      x: dataPoints,
+      y: Array(dataPoints.length).fill(0),
+      type: 'scatter',
+      mode: 'markers',
+      marker: { color: 'red', size: 8 },
+      name: 'Data',
+      showlegend: false
+    });
+    
+    // Vertical lines from data to density
+    for (let i = 0; i < dataPoints.length; i++) {
+      const x = dataPoints[i];
+      const y_dens_at_x = (1 / (sigma * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((x - mu) / sigma, 2));
+      
+      densityTraces.push({
+        x: [x, x],
+        y: [0, y_dens_at_x],
+        type: 'scatter',
+        mode: 'lines',
+        line: { color: 'gray', width: 1.5, dash: 'dot' },
+        showlegend: false,
+        hoverinfo: 'skip'
+      });
+      
+      // Points on density curve
+      densityTraces.push({
+        x: [x],
+        y: [y_dens_at_x],
+        type: 'scatter',
+        mode: 'markers',
+        marker: { color: 'blue', size: 6 },
+        showlegend: false,
+        hoverinfo: 'skip'
+      });
+    }
+  }
+  
+  const densityLayout = {
+    title: {
+      text: 'Normal Density with Data',
+      font: { size: 14 }
+    },
+    xaxis: { 
+      title: 'x', 
+      range: [-10, 10],
+      titlefont: { size: 14 },
+      tickfont: { size: 12 },
+      gridcolor: '#e0e0e0'
+    },
+    yaxis: { 
+      title: 'Density', 
+      range: [0, Math.max(...y_dens) * 1.2],
+      titlefont: { size: 14 },
+      tickfont: { size: 12 },
+      gridcolor: '#e0e0e0'
+    },
+    margin: { t: 50, l: 60, r: 30, b: 50 },
+    showlegend: false,
+    annotations: [
+      {
+        x: mu,
+        y: 0,
+        xref: 'x',
+        yref: 'y',
+        text: `μ = ${mu.toFixed(2)}`,
+        showarrow: true,
+        arrowhead: 2,
+        arrowcolor: 'blue',
+        ax: 0,
+        ay: -40,
+        font: { color: 'blue', size: 12 }
+      }
+    ]
+  };
+  
+  Plotly.react(densityDiv, densityTraces, densityLayout);
+  
+  // Update likelihood plot
+  updateLikelihoodPlot();
+}
+
+// Click handler for density plot
+densityDiv.addEventListener('click', function(e) {
+  if (!densityDiv._fullLayout) return;
+
+  const xaxis = densityDiv._fullLayout.xaxis;
+  const yaxis = densityDiv._fullLayout.yaxis;
+  if (!xaxis || !yaxis) return;
+
+  const bb = densityDiv.getBoundingClientRect();
+  const xPixel = e.clientX - bb.left - xaxis._offset;
+  
+  const x = xaxis.p2l(xPixel);
+
+  if (x >= xaxis.range[0] && x <= xaxis.range[1]) {
+    addPoint(x);
+  }
+});
+
+// Initial plots
+updatePlots();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Simple Linear Regression</title>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<style>
+body { font-family: Arial, margin: 20px; background: #f9f9f9; }
+.container { display: flex; flex-wrap: wrap; }
+.column { padding: 10px; }
+#left { width: 42.5%; min-width: 500px; }
+#middle { width: 10%; min-width: 120px; }
+#right { width: 42.5%; min-width: 500px; }
+button { margin: 5px; padding: 6px 15px; background: #2c3e50; color: white; border: none; border-radius: 4px; cursor: pointer; }
+button:hover { background: #1e2b37; }
+table { border-collapse: collapse; width: 100%; background: white; }
+th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
+input[type=range] { width: 80%; }
+</style>
+</head>
+<body>
+
+<h2>Simple Linear Regression and Mean Square Error</h2>
+
+<div class="container">
+
+<div id="left" class="column">
+  <div id="scatterPlot"></div>
+  <br>
+
+  <label>Intercept (β₀):</label><br>
+  <input type="range" id="beta0" min="-10" max="10" step="0.01" value="0">
+  <span id="beta0_val">0.00</span>
+  <br><br>
+
+  <label>Slope (β₁):</label><br>
+  <input type="range" id="beta1" min="-5" max="5" step="0.01" value="1">
+  <span id="beta1_val">1.00</span>
+  <br><br>
+
+  <button onclick="clearData()">Clear</button>
+  <button onclick="fitModel()">Fit OLS</button>
+</div>
+
+<div id="middle" class="column">
+  <p style="font-size:1em; text-align: center;">n = <span id="pointCount">0</span></p>
+  <table id="dataTable">
+    <thead><tr><th>x</th><th>y</th></tr></thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<div id="right" class="column">
+  <div id="msePlot"></div>
+</div>
+
+</div>
+
+<script>
+let dataPoints = [];
+
+const scatterDiv = document.getElementById('scatterPlot');
+const mseDiv = document.getElementById('msePlot');
+
+const beta0Slider = document.getElementById("beta0");
+const beta1Slider = document.getElementById("beta1");
+
+const beta0Display = document.getElementById("beta0_val");
+const beta1Display = document.getElementById("beta1_val");
+
+beta0Display.innerText = parseFloat(beta0Slider.value).toFixed(2);
+beta1Display.innerText = parseFloat(beta1Slider.value).toFixed(2);
+
+beta0Slider.oninput = () => {
+  beta0Display.innerText = parseFloat(beta0Slider.value).toFixed(2);
+  updatePlots();
+};
+
+beta1Slider.oninput = () => {
+  beta1Display.innerText = parseFloat(beta1Slider.value).toFixed(2);
+  updatePlots();
+};
+
+function updateTable(){
+  const tbody = document.querySelector("#dataTable tbody");
+  tbody.innerHTML = "";
+  dataPoints.forEach(pt=>{
+    tbody.innerHTML += `<tr><td>${pt.x.toFixed(2)}</td><td>${pt.y.toFixed(2)}</td></tr>`;
+  });
+  document.getElementById('pointCount').innerText = dataPoints.length;
+}
+
+function addPoint(x,y){
+  dataPoints.push({
+    x: parseFloat(x.toFixed(2)),
+    y: parseFloat(y.toFixed(2))
+  });
+  updateTable();
+  updatePlots();
+}
+
+function clearData(){
+  dataPoints = [];
+  updateTable();
+  updatePlots();
+}
+
+function computeOLS(){
+  if(dataPoints.length < 2) return null;
+
+  const x = dataPoints.map(p=>p.x);
+  const y = dataPoints.map(p=>p.y);
+
+  const meanX = x.reduce((a,b)=>a+b)/x.length;
+  const meanY = y.reduce((a,b)=>a+b)/y.length;
+
+  // sample covariance and variance (unbiased)
+  let cov = 0, varX = 0;
+  for(let i=0; i<x.length; i++){
+    cov += (x[i] - meanX) * (y[i] - meanY);
+    varX += (x[i] - meanX) ** 2;
+  }
+  // for slope, dividing by n or n-1 gives same optimal value, but we use n for consistency with MSE (population)
+  // Actually OLS estimate uses sum of squares, so we can compute directly:
+  const beta1 = cov / varX;  // varX is sum of squares (not divided by n)
+  const beta0 = meanY - beta1 * meanX;
+
+  return {beta0, beta1};
+}
+
+function fitModel(){
+  const mle = computeOLS();
+  if(!mle) {
+    alert("Need at least two data points.");
+    return;
+  }
+
+  beta0Slider.value = mle.beta0;
+  beta1Slider.value = mle.beta1;
+  beta0Display.innerText = mle.beta0.toFixed(2);
+  beta1Display.innerText = mle.beta1.toFixed(2);
+  updatePlots();
+}
+
+function computeMSE(b0, b1){
+  if(dataPoints.length === 0) return 0;
+  let sumSq = 0;
+  dataPoints.forEach(p => {
+    const pred = b0 + b1 * p.x;
+    sumSq += (p.y - pred) ** 2;
+  });
+  return sumSq / dataPoints.length;
+}
+
+function updatePlots(){
+  const xvals = dataPoints.map(p=>p.x);
+  const yvals = dataPoints.map(p=>p.y);
+
+  const b0 = parseFloat(beta0Slider.value);
+  const b1 = parseFloat(beta1Slider.value);
+
+  // --- LEFT SCATTER PLOT ---
+  const lineX = [-10, 10];
+  const currentLineY = lineX.map(x => b0 + b1 * x);
+
+  const traces = [
+    {
+      x: xvals,
+      y: yvals,
+      mode: 'markers',
+      marker: { color: 'red', size: 8 },
+      name: 'Data',
+      type: 'scatter'
+    },
+    {
+      x: lineX,
+      y: currentLineY,
+      mode: 'lines',
+      line: { color: 'blue', width: 2 },
+      name: 'Current fit'
+    }
+  ];
+
+  const mle = computeOLS();
+  if(mle){
+    traces.push({
+      x: lineX,
+      y: lineX.map(x => mle.beta0 + mle.beta1 * x),
+      mode: 'lines',
+      line: { color: 'darkgreen', dash: 'dash', width: 2 },
+      name: 'OLS fit'
+    });
+  }
+
+  Plotly.react(scatterDiv, traces, {
+    xaxis: { range: [-10, 10] },
+    yaxis: { range: [-10, 10] },
+    margin: { t: 40, l: 40, r: 20 },
+    hovermode: 'closest',
+    showlegend: true,
+    legend: { x: 0, y: 1 }
+  });
+
+  // --- RIGHT MSE CONTOUR (CORRECTED) ---
+  if(dataPoints.length < 2){
+    // show empty or a message
+    Plotly.react(mseDiv, [], {
+      title: 'Add at least 2 points to see MSE contour',
+      margin: { t: 50 }
+    });
+    return;
+  }
+
+  // define grid limits for contour (extend a bit beyond slider range to see minimum)
+  const b0_min = -10, b0_max = 10;
+  const b1_min = -5, b1_max = 5;
+  const gridSize = 45; // resolution
+
+  const beta0_vals = Array.from({ length: gridSize }, (_, i) => b0_min + i * (b0_max - b0_min) / (gridSize-1));
+  const beta1_vals = Array.from({ length: gridSize }, (_, i) => b1_min + i * (b1_max - b1_min) / (gridSize-1));
+
+  // Build z matrix: z[i][j] for beta0_vals[i] and beta1_vals[j] (commonly x=beta0, y=beta1)
+  // But Plotly contour expects z as a 2D array with dimensions (y length) x (x length) if using default x/y.
+  // Safer: use x=beta0_vals, y=beta1_vals, and z[y-index][x-index]
+  const z = [];
+  for(let i=0; i<beta1_vals.length; i++) {      // y-axis = beta1 (row)
+    const row = [];
+    for(let j=0; j<beta0_vals.length; j++) {    // x-axis = beta0 (column)
+      row.push(computeMSE(beta0_vals[j], beta1_vals[i]));
+    }
+    z.push(row);
+  }
+
+  const contourTrace = {
+    x: beta0_vals,
+    y: beta1_vals,
+    z: z,
+    type: 'contour',
+    contours: {
+      coloring: 'heatmap',
+      showlabels: true,
+      labelfont: { size: 10, color: 'white' }
+    },
+    colorbar: { title: 'MSE', titleside: 'right' },
+    hoverinfo: 'x+y+z',
+    showscale: true
+  };
+
+  const markers = [];
+
+  // Current slider position (blue dot)
+  markers.push({
+    x: [b0],
+    y: [b1],
+    mode: 'markers',
+    marker: { color: 'blue', size: 12, line: { color: 'white', width: 1 } },
+    name: 'current (β₀,β₁)',
+    type: 'scatter'
+  });
+
+  // OLS minimum (green dot)
+  if(mle){
+    markers.push({
+      x: [mle.beta0],
+      y: [mle.beta1],
+      mode: 'markers',
+      marker: { color: 'darkgreen', size: 12, symbol: 'diamond', line: { color: 'white', width: 1 } },
+      name: 'OLS minimum',
+      type: 'scatter'
+    });
+  }
+
+  const layout = {
+    title: 'Mean Squared Error Contour',
+    xaxis: { title: 'β₀ (intercept)', range: [b0_min, b0_max] },
+    yaxis: { title: 'β₁ (slope)', range: [b1_min, b1_max] },
+    margin: { t: 50, l: 50, r: 50 },
+    showlegend: true,
+    legend: { x: 0.02, y: 0.98, bgcolor: 'rgba(255,255,255,0.7)' },
+    hovermode: 'closest'
+  };
+
+  Plotly.react(mseDiv, [contourTrace, ...markers], layout);
+}
+
+// --- Click handler to add points ---
+scatterDiv.addEventListener('click', function(e){
+  // ensure layout is ready
+  if(!scatterDiv._fullLayout) return;
+
+  const xaxis = scatterDiv._fullLayout.xaxis;
+  const yaxis = scatterDiv._fullLayout.yaxis;
+  if(!xaxis || !yaxis) return;
+
+  // get pixel coordinates relative to plot
+  const bb = scatterDiv.getBoundingClientRect();
+  const xPixel = e.clientX - bb.left - xaxis._offset;
+  const yPixel = e.clientY - bb.top - yaxis._offset;
+
+  // convert to data coordinates
+  const x = xaxis.p2l(xPixel);
+  const y = yaxis.p2l(yPixel);
+
+  // optional: check if within axes ranges
+  if(x >= xaxis.range[0] && x <= xaxis.range[1] &&
+     y >= yaxis.range[0] && y <= yaxis.range[1]){
+    addPoint(x, y);
+  }
+});
+
+// initial empty plots
+updatePlots();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Main Website</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background: #333;
+      color: white;
+      padding: 15px;
+      text-align: center;
+    }
+    nav {
+      display: flex;
+      justify-content: center;
+      background: #555;
+    }
+    nav a {
+      color: white;
+      padding: 14px 20px;
+      text-decoration: none;
+      display: block;
+    }
+    nav a:hover {
+      background: #777;
+    }
+    iframe {
+      width: 100%;
+      height: 80vh;
+      border: none;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>My Website</h1>
+</header>
+
+<nav>
+  <a href="SL.html" target="contentFrame">SL</a>
+  <a href="SLR.html" target="contentFrame">SLR</a>
+  <a href="MLE.html" target="contentFrame">MLE</a>
+</nav>
+
+<iframe name="contentFrame" src="home.html"></iframe>
+
+</body>
+</html>
