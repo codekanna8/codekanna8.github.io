@@ -3,82 +3,53 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My GitHub Pages Site</title>
+  <title>Main Website</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       margin: 0;
       padding: 0;
-      background: #f4f4f4;
     }
     header {
-      background: #24292e;
+      background: #333;
       color: white;
-      padding: 20px;
+      padding: 15px;
       text-align: center;
     }
     nav {
       display: flex;
       justify-content: center;
-      background: #0366d6;
+      background: #555;
     }
     nav a {
       color: white;
       padding: 14px 20px;
       text-decoration: none;
+      display: block;
     }
     nav a:hover {
-      background: #024ea2;
+      background: #777;
     }
-    .container {
-      padding: 20px;
-    }
-    section {
-      margin-bottom: 40px;
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    iframe {
+      width: 100%;
+      height: 80vh;
+      border: none;
     }
   </style>
 </head>
 <body>
 
 <header>
-  <h1>My GitHub.io Website</h1>
-  <p>Welcome to my site hosted on GitHub Pages</p>
+  <h1>My Website</h1>
 </header>
 
 <nav>
-  <a href="#home">Home</a>
-  <a href="#about">About</a>
-  <a href="#projects">Projects</a>
-  <a href="#contact">Contact</a>
+  <a href="SL.html" target="contentFrame">SL</a>
+  <a href="SLR.html" target="contentFrame">SLR</a>
+  <a href="MLE.html" target="contentFrame">MLE</a>
 </nav>
 
-<div class="container">
-
-  <section id="home">
-    <h2>Home</h2>
-    <p>This is the homepage of your GitHub Pages website.</p>
-  </section>
-
-  <section id="about">
-    <h2>About</h2>
-    <p>Write something about yourself here.</p>
-  </section>
-
-  <section id="projects">
-    <h2>Projects</h2>
-    <p>Showcase your projects or work.</p>
-  </section>
-
-  <section id="contact">
-    <h2>Contact</h2>
-    <p>Email: your@email.com</p>
-  </section>
-
-</div>
+<iframe name="contentFrame" src="home.html"></iframe>
 
 </body>
 </html>
